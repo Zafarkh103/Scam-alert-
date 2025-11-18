@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asma's Image Fix Runner Game — Fixed</title>
+    
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            background: #f0f0f0;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        #game-container {
+            width: 100%;
+            max-width: 900px;
+            height: 300px; 
+            position: relative;
+            overflow: hidden;
+            border-bottom: 5px solid #4CAF50;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            background-color: #87CEEB; /* fallback sky color */
+        }
+        
+        /* Background image */
+        #background-img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            z-index: 1;
+        }
+
+        /* Player FIX: Size chhota kiya for better collision */
+        #player {
+            width: 150px; 
+            height: 150px;
+            position: absolute;
+            bottom: 0;
+            left: 80px;
+            z-index: 5;
+            transition: transform 0.25s ease-out;
+        }
+
+        #player img { 
+            width: 100%;
+            height: 100%;
+            display: block;
+            pointer-events: none;
+        }
+
+        /* Jump height adjust ki */
+        .is-jumping {
+            transform: translateY(-150px); 
+        }
+
+        /* Obstacles FIX: Size chhota kiya */
+        .obstacle {
+            width: 80px;
+            height: 80px;
+            position: absolute;
+            bottom: 0;
+            right: -60px;
+            z-index: 6;
+            background-repeat: no-repeat;
+            background-size: contain;
+            background-position: center;
+        }
+
+        #score-board {
+            position: absolute;
+            top: 5px; 
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 5px 20px;
+            border-radius: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            min-width: 100px;
+            z-index: 10;
+        }
+
+        #jump-button-container {
+            margin-top: 12px;
+            z-index: 100;
+        }
+
+        #jump-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: none;
+            background: #4CAF50;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+        }
+
+        #jump-btn img { width: 28px; height: 28px; display:block; }
+
+        #game-over-screen {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+    </style>
+    </head>
+<body>
+
+    
+    <div id="start-screen" style="position: absolute; inset: 0; background: #f0f0f0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000;">
+        <h1 style="margin-bottom: 20px;">MADE BY ZAFAR 🥶</h1>
+        <button onclick="startGame()" style="padding:18px 30px; font-size:24px; border:none; border-radius:14px; background:#3cb371; color:white; font-weight:bold; cursor:pointer; box-shadow:0 6px 15px rgba(0,0,0,0.3);">PLAY GAME</button>
+    </div>
+
+    <div id="game-container"> 
+        <img id="background-img" src="background_image.jpg" alt="Game Background">
+
+        <div id="score-board">
+            <p style="margin:0; font-size:12px;">YOUR SCORE</p>
+            <span id="score">0</span>
+        </div>
+        
+        <div id="player">
+            <img src="player_running.png" alt="Player">
+        </div>
+    </div>
+
+    <div id="jump-button-container">
+        <button id="jump-btn" onclick="jump()">
+            <img src="jump_icon.png" alt="Jump Icon">
+            <p style="margin:0; font-size:14px;">JUMP</p>
+        </button>
+    </div>
+
+    <div id="game-over-screen" style="display: none;">
+        <h1 style="margin:0 0 10px 0;">GAME OVER!</h1>
+        <p style="margin:0 0 20px 0;">Aapka Score: <span id="final-score">0</span></p>
+        <audio id="crash-sound" src="Crash_sound.mp3"></audio>
+        <audio id="background-music" src="fullaudio.mp3" loop></audio>
+        <button onclick="window.location.reload()">Dobara Shuru Karein</button>
+    </div>
+
+    <script>
+        const player = document.getElementById('player');
+        const gameContainer = document.getElementById('game-container');
+        const scoreDisplay = document.getElementById('score');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const crashSound = document.getElementById('crash-sound');
+        const startScreen = document.getElementById('start-screen');
+        // FIX: Background Music Element Reference
+        const backgroundMusic = document.getElementById('background-music');
+
+        let score = 0;
+        let isJumping = false;
+        let isGameOver = false;
+
+        function jump() {
+            if (!isJumping && !isGameOver) {
+                isJumping = true;
+                player.classList.add('is-jumping');
+                setTimeout(() => {
+                    player.classList.remove('is-jumping');
+                    isJumping = false;
+                }, 420); 
+            }
+        }
+
+        // Create obstacles...
+        function createObstacle() {
+            if (isGameOver) return;
+
+            const obstacle = document.createElement('div');
+            obstacle.classList.add('obstacle');
+            obstacle.style.backgroundImage = "url('stone_obstacle.png')"; 
+            gameContainer.appendChild(obstacle);
+
+            let pos = -60; 
+            const speed = 2.5 + Math.random() * 3.0; 
+
+            function step() {
+                if (isGameOver) { 
+                    obstacle.remove();
+                    return;
+                }
+
+                pos += speed;
+                const rightPx = pos;
+                obstacle.style.right = rightPx + 'px';
+
+                if (rightPx > gameContainer.clientWidth + 80) {
+                    obstacle.remove();
+                    score += 100;
+                    scoreDisplay.textContent = score;
+                    return;
+                }
+
+                const playerRect = player.getBoundingClientRect();
+                const obstacleRect = obstacle.getBoundingClientRect();
+
+                if (
+                    playerRect.right > obstacleRect.left &&
+                    playerRect.left < obstacleRect.right &&
+                    playerRect.bottom > obstacleRect.top &&
+                    playerRect.top < obstacleRect.bottom
+                ) {
+                    gameOver();
+                    return;
+                }
+
+                requestAnimationFrame(step);
+            }
+
+            requestAnimationFrame(step);
+        }
+
+        function startObstacleGenerator() {
+            function scheduleNext() {
+                if (isGameOver) return;
+                const randomTime = Math.random() * 2500 + 1800; 
+                setTimeout(() => {
+                    createObstacle();
+                    scheduleNext();
+                }, randomTime);
+            }
+            scheduleNext();
+        }
+
+        function gameOver() {
+            if (isGameOver) return;
+            isGameOver = true;
+            finalScoreDisplay.textContent = score;
+            gameOverScreen.style.display = 'flex';
+            gameContainer.style.opacity = '0.5';
+            
+            // FIX: Background Music ko stop aur reset karo
+            backgroundMusic.pause();
+            backgroundMusic.currentTime = 0;
+            
+            // Crash Sound 
+            try { 
+                setTimeout(() => {
+                    crashSound.play().catch(e => console.error("Sound play failed:", e)); 
+                }, 100); 
+            } catch(e) {}
+            
+            // remove obstacles
+            document.querySelectorAll('.obstacle').forEach(obs => obs.remove());
+        }
+
+        function startGame(){
+            startScreen.style.display='none'; 
+            startObstacleGenerator();
+            
+            // FIX: Game start hote hi music chalao
+            try {
+                backgroundMusic.volume = 0.4; // Volume set
+                backgroundMusic.play().catch(e => console.warn("Music play blocked by browser:", e));
+            } catch(e) {}
+        }
+
+
+        // keyboard support
+        document.addEventListener('keydown', function(event) {
+            if (event.code === 'Space' || event.key === ' ') {
+                jump();
+            }
+        });
+
+        // mobile: tap the game area to jump
+        gameContainer.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); }, {passive:false});
+
+    </script>
+    </body>
+</html>
